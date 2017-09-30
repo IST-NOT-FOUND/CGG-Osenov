@@ -1,15 +1,6 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Изучаем WebGL</title>
-    <meta charset="utf-8" />
-</head>
-<body>
-<canvas id="canvas3D" width="400" height="300">Ваш браузер не поддерживает элемент canvas</canvas>
-<script type="text/javascript">
-    var gl=null; // контекст WebGL
+var gl=null; // контекст WebGL
 
-    window.onload=function(){
+window.onload=function(){
         // получаем элемент canvas
         var canvas = document.getElementById("canvas3D");
         try {
@@ -29,6 +20,3 @@
             gl.clear(gl.COLOR_BUFFER_BIT);
         }
     }
-</script>
-</body>
-</html>
