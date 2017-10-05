@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Привет WebGL!</title>
-    <meta charset="utf-8">
-
+    <title>WebGL</title>
+    <meta charset="utf-8" />
 </head>
 <body>
-<h1>Глава2. Конвейер WebGL</h1>
+<h1>Глава5. Куб</h1>
 <canvas id="canvas3D" width="400" height="300">Ваш браузер не поддерживает элемент canvas</canvas>
 <!-- фрагментный шейдер -->
 <script id="shader-fs" type="x-shader/x-fragment">
   void main(void) {
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
   }
 </script>
 <!-- вершинный шейдер -->
@@ -21,6 +20,6 @@
     gl_Position = vec4(aVertexPosition, 1.0);
   }
 </script>
-<script src="../js/Г2_Конвейер.js"></script>
+<script src="../js/Г5_Первый_3D-объект_Куб.js"></script>
 </body>
 </html>
