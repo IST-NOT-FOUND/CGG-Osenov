@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Привет WebGL!</title>
+</head>
+<body>
+<h1>Индивидуальное задание 1 - Кнопка изменяющая цвета</h1>
+<canvas id="canvas3D" style="margin: 10px" width="400" height="300">Ваш браузер не поддерживает элемент canvas</canvas>
+<!-- фрагментный шейдер -->
+<script id="shader-fs" type="x-shader/x-fragment">
+varying highp vec4 vColor;
+  void main(void) {
+    gl_FragColor = vColor;
+  }
+</script>
+<!-- вершинный шейдер -->
+<script id="shader-vs" type="x-shader/x-vertex">
+attribute vec3 aVertexPosition;
+attribute vec3 aVertexColor;
+varying highp vec4 vColor;
+void main(void) {
+    gl_Position = vec4(aVertexPosition, 1.0);
+    vColor = vec4(aVertexColor, 1.0);
+}
+</script>
+<script src="../js/C1_Individual_task_1.js"></script>
+<button onclick='changeColor()'>Изменить цвета</button>
+</body>
+</html>
