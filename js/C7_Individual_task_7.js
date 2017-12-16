@@ -1,375 +1,344 @@
-var gl;
-var shaderProgram;
-var wallVertexBuffer;
-var wallIndexBuffer;
-var roofVertexBuffer;
-var roofIndexBuffer;
-var wallTextureCoordsBuffer;
-var roofTextureCoordsBuffer;
+var cubeRotation = 0.0;
 
-var wallTexture; // переменная для хранения текстуры кирпичной стены
-var roofTexture; // переменная для хранения текстуры каменной крыши
-var angle = 2.0; //угол вращения в радианах
-var zTranslation = -2.0; // смещение по оси Z
+main();
 
-var mvMatrix = mat4.create();
-var pMatrix = mat4.create();
+function main() {
+    const canvas = document.querySelector('#glcanvas');
+    const gl = canvas.getContext('webgl');
 
-// установка шейдеров
-function initShaders() {
-    var fragmentShader = getShader(gl.FRAGMENT_SHADER, 'shader-fs');
-    var vertexShader = getShader(gl.VERTEX_SHADER, 'shader-vs');
+    if (!gl) {
+        alert('Unable to initialize WebGL. Your browser or machine may not support it.');
+        return;
+    }
 
-    shaderProgram = gl.createProgram();
+    const vsSource = `
+    attribute vec4 aVertexPosition;
+    attribute vec2 aTextureCoord;
+    uniform mat4 uModelViewMatrix;
+    uniform mat4 uProjectionMatrix;
+    varying highp vec2 vTextureCoord;
+    void main(void) {
+      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+      vTextureCoord = aTextureCoord;
+    }
+  `;
 
+    const fsSource = `
+    varying highp vec2 vTextureCoord;
+    uniform sampler2D uSampler;
+    void main(void) {
+      gl_FragColor = texture2D(uSampler, vTextureCoord);
+    }
+  `;
+
+    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+
+    const programInfo = {
+        program: shaderProgram,
+        attribLocations: {
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+            textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+        },
+        uniformLocations: {
+            projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+            modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+            uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+        },
+    };
+
+    const buffers = initBuffers(gl);
+
+    const texture = loadTexture(gl, "../Image/cubetexture.png");
+
+    var then = 0;
+
+    function render(now) {
+        now *= 0.001;
+        const deltaTime = now - then;
+        then = now;
+
+        drawScene(gl, programInfo, buffers, texture, deltaTime);
+
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+}
+
+function initBuffers(gl) {
+
+    const positionBuffer = gl.createBuffer();
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+
+    const positions = [
+        // Front face
+        -1.0, -1.0,  1.0,
+        1.0, -1.0,  1.0,
+        1.0,  1.0,  1.0,
+        -1.0,  1.0,  1.0,
+
+        // Back face
+        -1.0, -1.0, -1.0,
+        -1.0,  1.0, -1.0,
+        1.0,  1.0, -1.0,
+        1.0, -1.0, -1.0,
+
+        // Top face
+        -1.0,  1.0, -1.0,
+        -1.0,  1.0,  1.0,
+        1.0,  1.0,  1.0,
+        1.0,  1.0, -1.0,
+
+        // Bottom face
+        -1.0, -1.0, -1.0,
+        1.0, -1.0, -1.0,
+        1.0, -1.0,  1.0,
+        -1.0, -1.0,  1.0,
+
+        // Right face
+        1.0, -1.0, -1.0,
+        1.0,  1.0, -1.0,
+        1.0,  1.0,  1.0,
+        1.0, -1.0,  1.0,
+
+        // Left face
+        -1.0, -1.0, -1.0,
+        -1.0, -1.0,  1.0,
+        -1.0,  1.0,  1.0,
+        -1.0,  1.0, -1.0,
+    ];
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+    const textureCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+
+    const textureCoordinates = [
+        // Front
+        0.0,  0.0,
+        1.0,  0.0,
+        1.0,  1.0,
+        0.0,  1.0,
+        // Back
+        0.0,  0.0,
+        1.0,  0.0,
+        1.0,  1.0,
+        0.0,  1.0,
+        // Top
+        0.0,  0.0,
+        1.0,  0.0,
+        1.0,  1.0,
+        0.0,  1.0,
+        // Bottom
+        0.0,  0.0,
+        1.0,  0.0,
+        1.0,  1.0,
+        0.0,  1.0,
+        // Right
+        0.0,  0.0,
+        1.0,  0.0,
+        1.0,  1.0,
+        0.0,  1.0,
+        // Left
+        0.0,  0.0,
+        1.0,  0.0,
+        1.0,  1.0,
+        0.0,  1.0
+    ];
+
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),
+        gl.STATIC_DRAW);
+
+    const indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    const indices = [
+        0,  1,  2,      0,  2,  3,    // front
+        4,  5,  6,      4,  6,  7,    // back
+        8,  9,  10,     8,  10, 11,   // top
+        12, 13, 14,     12, 14, 15,   // bottom
+        16, 17, 18,     16, 18, 19,   // right
+        20, 21, 22,     20, 22, 23   // left
+    ];
+
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+        new Uint16Array(indices), gl.STATIC_DRAW);
+
+    return {
+        position: positionBuffer,
+        textureCoord: textureCoordBuffer,
+        indices: indexBuffer
+    };
+}
+
+function loadTexture(gl, url) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    const level = 0;
+    const internalFormat = gl.RGBA;
+    const width = 1;
+    const height = 1;
+    const border = 0;
+    const srcFormat = gl.RGBA;
+    const srcType = gl.UNSIGNED_BYTE;
+    const pixel = new Uint8Array([0, 0, 255, 255]);  // opaque blue
+    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+        width, height, border, srcFormat, srcType,
+        pixel);
+
+    const image = new Image();
+    image.onload = function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+            srcFormat, srcType, image);
+
+        if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+            gl.generateMipmap(gl.TEXTURE_2D);
+        } else {
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        }
+    };
+    image.src = url;
+
+    return texture;
+}
+
+function isPowerOf2(value) {
+    return (value & (value - 1)) == 0;
+}
+
+function drawScene(gl, programInfo, buffers, texture, deltaTime) {
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
+    gl.clearDepth(1.0);                 // Clear everything
+    gl.enable(gl.DEPTH_TEST);           // Enable depth testing
+    gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const fieldOfView = 45 * Math.PI / 180;   // in radians
+    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    const zNear = 0.1;
+    const zFar = 100.0;
+    const projectionMatrix = mat4.create();
+
+    mat4.perspective(projectionMatrix,
+        fieldOfView,
+        aspect,
+        zNear,
+        zFar);
+
+    const modelViewMatrix = mat4.create();
+
+    mat4.translate(modelViewMatrix,     // destination matrix
+        modelViewMatrix,     // matrix to translate
+        [-0.0, 0.0, -6.0]);  // amount to translate
+    mat4.rotate(modelViewMatrix,  // destination matrix
+        modelViewMatrix,  // matrix to rotate
+        cubeRotation,     // amount to rotate in radians
+        [0, 0, 1]);       // axis to rotate around (Z)
+    mat4.rotate(modelViewMatrix,  // destination matrix
+        modelViewMatrix,  // matrix to rotate
+        cubeRotation * .7,// amount to rotate in radians
+        [0, 1, 0]);       // axis to rotate around (X)
+
+    {
+        const numComponents = 3;
+        const type = gl.FLOAT;
+        const normalize = false;
+        const stride = 0;
+        const offset = 0;
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+        gl.vertexAttribPointer(
+            programInfo.attribLocations.vertexPosition,
+            numComponents,
+            type,
+            normalize,
+            stride,
+            offset);
+        gl.enableVertexAttribArray(
+            programInfo.attribLocations.vertexPosition);
+    }
+
+    {
+        const numComponents = 2;
+        const type = gl.FLOAT;
+        const normalize = false;
+        const stride = 0;
+        const offset = 0;
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+        gl.vertexAttribPointer(
+            programInfo.attribLocations.textureCoord,
+            numComponents,
+            type,
+            normalize,
+            stride,
+            offset);
+        gl.enableVertexAttribArray(
+            programInfo.attribLocations.textureCoord);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+
+    gl.useProgram(programInfo.program);
+
+    gl.uniformMatrix4fv(
+        programInfo.uniformLocations.projectionMatrix,
+        false,
+        projectionMatrix);
+    gl.uniformMatrix4fv(
+        programInfo.uniformLocations.modelViewMatrix,
+        false,
+        modelViewMatrix);
+
+    gl.activeTexture(gl.TEXTURE0);
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+    {
+        const vertexCount = 36;
+        const type = gl.UNSIGNED_SHORT;
+        const offset = 0;
+        gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
+    }
+
+    cubeRotation += deltaTime;
+}
+
+function initShaderProgram(gl, vsSource, fsSource) {
+    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+    const shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShader);
     gl.attachShader(shaderProgram, fragmentShader);
-
     gl.linkProgram(shaderProgram);
 
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        alert("Не удалось установить шейдеры");
+        alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+        return null;
     }
 
-    gl.useProgram(shaderProgram);
-
-    shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-    gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-
-    shaderProgram.vertexTextureAttribute = gl.getAttribLocation(shaderProgram, "aVertexTextureCoords");
-    gl.enableVertexAttribArray(shaderProgram.vertexTextureAttribute);
-
-    shaderProgram.MVMatrix = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-    shaderProgram.ProjMatrix = gl.getUniformLocation(shaderProgram, "uPMatrix");
+    return shaderProgram;
 }
-function setMatrixUniforms(){
-    gl.uniformMatrix4fv(shaderProgram.ProjMatrix,false, pMatrix);
-    gl.uniformMatrix4fv(shaderProgram.MVMatrix, false, mvMatrix);
-}
-// Функция создания шейдера
-function getShader(type,id) {
-    var source = document.getElementById(id).innerHTML;
 
-    var shader = gl.createShader(type);
+function loadShader(gl, type, source) {
+    const shader = gl.createShader(type);
 
     gl.shaderSource(shader, source);
 
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        alert("Ошибка компиляции шейдера: " + gl.getShaderInfoLog(shader));
+        alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
         gl.deleteShader(shader);
         return null;
     }
+
     return shader;
 }
-
-function initWallBuffers() {
-
-    var vertices =[
-        // первая колонна
-        // лицевая часть
-        -0.8, -0.5, 0.5,
-        -0.8, 0.5, 0.5,
-        -0.4, 0.5, 0.5,
-        -0.4, -0.5, 0.5,
-        // задняя часть
-        -0.8, -0.5, 0.0,
-        -0.8, 0.5, 0.0,
-        -0.4, 0.5, 0.0,
-        -0.4, -0.5, 0.0,
-
-        // левая боковая часть
-        -0.8, -0.5, 0.5,
-        -0.8, 0.5, 0.5,
-        -0.8, 0.5, 0.0,
-        -0.8, -0.5, 0.0,
-
-        // правая боковая часть
-        -0.4, -0.5, 0.5,
-        -0.4, 0.5, 0.5,
-        -0.4, 0.5, 0.0,
-        -0.4, -0.5, 0.0,
-
-        // вторая колонна
-        // лицевая часть
-        0.8, -0.5, 0.5,
-        0.8, 0.5, 0.5,
-        0.4, 0.5, 0.5,
-        0.4, -0.5, 0.5,
-        // задняя часть
-        0.8, -0.5, 0.0,
-        0.8, 0.5, 0.0,
-        0.4, 0.5, 0.0,
-        0.4, -0.5, 0.0,
-
-        // левая боковая часть
-        0.8, -0.5, 0.5,
-        0.8, 0.5, 0.5,
-        0.8, 0.5, 0.0,
-        0.8, -0.5, 0.0,
-
-        // правая боковая часть
-        0.4, -0.5, 0.5,
-        0.4, 0.5, 0.5,
-        0.4, 0.5, 0.0,
-        0.4, -0.5, 0.0
-    ];
-
-    var indices = [ // лицевая часть
-        0, 1, 2,
-        2, 3, 0,
-        // задняя часть
-        4, 5, 6,
-        6, 7, 4,
-        //левая боковая часть
-        8, 9, 10,
-        10, 11, 8,
-        // правая боковая часть
-        12, 13, 14,
-        14, 15, 12,
-        // вторая колонна
-        // лицевая часть
-        16, 17, 18,
-        18, 19, 16,
-        // задняя часть
-        20, 21, 22,
-        22, 23, 20,
-        //левая боковая часть
-        24, 25, 26,
-        26, 27, 24,
-        // правая боковая часть
-        28, 29, 30,
-        30, 31, 28
-    ];
-
-    wallVertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, wallVertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    wallVertexBuffer.itemSize = 3;
-
-    wallIndexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wallIndexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-    wallIndexBuffer.numberOfItems = indices.length;
-
-    // Координаты текстуры
-    var textureCoords = [];
-    for (var i=0; i<8; i++) {
-        textureCoords.push(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0);
-    }
-    // Создание буфера координат текстуры
-    wallTextureCoordsBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, wallTextureCoordsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
-    wallTextureCoordsBuffer.itemSize=2;
-}
-
-function initRoofBuffers() {
-
-    var vertices =[
-        // лицевая часть
-        -1.0, 0.5, 0.5,
-        -1.0, 0.8, 0.5,
-        1.0, 0.8, 0.5,
-        1.0, 0.5, 0.5,
-        // задняя часть
-        -1.0, 0.5, 0.0,
-        -1.0, 0.8, 0.0,
-        1.0, 0.8, 0.0,
-        1.0, 0.5, 0.0,
-        // левая боковая часть
-        -1.0, 0.5, 0.5,
-        -1.0, 0.8, 0.5,
-        -1.0, 0.8, 0.0,
-        -1.0, 0.5, 0.0,
-        // правая боковая часть
-        1.0, 0.5, 0.5,
-        1.0, 0.8, 0.5,
-        1.0, 0.8, 0.0,
-        1.0, 0.5, 0.0,
-        // низ
-        -1.0, 0.5, 0.5,
-        -1.0, 0.5, 0.0,
-        1.0, 0.5, 0.0,
-        1.0, 0.5, 0.5,
-        // верх
-        -1.0, 0.8, 0.5,
-        -1.0, 0.8, 0.0,
-        1.0, 0.8, 0.0,
-        1.0, 0.8, 0.5,
-    ];
-
-    var indices = [
-        0, 1, 2,
-        2, 3, 0,
-        // задняя часть
-        4, 5, 6,
-        6, 7, 4,
-        //левая боковая часть
-        8, 9, 10,
-        10, 11, 8,
-        // правая боковая часть
-        12, 13, 14,
-        14, 15, 12,
-        // низ
-        16, 17, 18,
-        18, 19, 16,
-        // верх
-        20, 21, 22,
-        22, 23, 20
-    ];
-
-    roofVertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, roofVertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    roofVertexBuffer.itemSize = 3;
-
-    roofIndexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, roofIndexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-    roofIndexBuffer.numberOfItems = indices.length;
-
-    // Координаты текстуры
-    var textureCoords = [];
-    for (var i=0; i<6; i++) {
-        textureCoords.push(0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.0);
-    }
-    // Создание буфера координат текстуры
-    roofTextureCoordsBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, roofTextureCoordsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
-    roofTextureCoordsBuffer.itemSize=2;
-}
-
-function wallDraw() {
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, wallVertexBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-        wallVertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, wallTextureCoordsBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexTextureAttribute,
-        wallTextureCoordsBuffer.itemSize, gl.FLOAT, false, 0, 0);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, wallTexture);
-    gl.enable(gl.DEPTH_TEST);
-    gl.drawElements(gl.TRIANGLES, wallIndexBuffer.numberOfItems, gl.UNSIGNED_SHORT,0);
-}
-function roofDraw() {
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, roofVertexBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-        roofVertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, roofTextureCoordsBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexTextureAttribute,
-        roofTextureCoordsBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-    gl.activeTexture(gl.TEXTURE0);
-
-    gl.bindTexture(gl.TEXTURE_2D, roofTexture);
-    gl.enable(gl.DEPTH_TEST);
-    gl.drawElements(gl.TRIANGLES, roofIndexBuffer.numberOfItems, gl.UNSIGNED_SHORT,0);
-}
-function setupWebGL()
-{
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT || gl.DEPTH_BUFFER_BIT);
-
-    gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-    mat4.perspective(pMatrix, 1.04, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0);
-    mat4.identity(mvMatrix);
-    mat4.translate(mvMatrix,mvMatrix,[0, 0, zTranslation]);
-    mat4.rotate(mvMatrix,mvMatrix, angle, [0, 1, 0]);
-}
-function setupTextures() {
-    wallTexture = gl.createTexture();
-    setTexture("../Image/Brickwall.jpg", wallTexture);
-
-    roofTexture = gl.createTexture();
-    setTexture("../Image/Stone.jpg", roofTexture);
-
-}
-function setTexture(url, texture){
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    var image = new Image();
-    image.onload = function() {
-
-        handleTextureLoaded(image, texture);
-    }
-
-    image.src = url;
-
-    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
-    gl.uniform1i(shaderProgram.samplerUniform, 0);
-}
-function handleTextureLoaded(image, texture) {
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-}
-window.onload=function(){
-
-    var canvas = document.getElementById("canvas3D");
-    try {
-        gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-    }
-    catch(e) {}
-
-    if (!gl) {
-        alert("Ваш браузер не поддерживает WebGL");
-    }
-    if(gl){
-        document.addEventListener('keydown', handleKeyDown, false);
-        gl.viewportWidth = canvas.width;
-        gl.viewportHeight = canvas.height;
-
-        initShaders();
-        initRoofBuffers();
-        initWallBuffers();
-        setupTextures();
-        (function animloop(){
-
-            setupWebGL();
-            setMatrixUniforms();
-            wallDraw();
-            roofDraw();
-            requestAnimFrame(animloop, canvas);
-        })();
-    }
-}
-function handleKeyDown(e){
-    switch(e.keyCode)
-    {
-        case 39:
-            angle+=0.1;
-            break;
-        case 37:
-            angle-=0.1;
-            break;
-        case 40:
-            zTranslation+=0.1;
-            break;
-        case 38:
-            zTranslation-=0.1;
-            break;
-    }
-}
-window.requestAnimFrame = (function(){
-    return  window.requestAnimationFrame       ||
-        window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame    ||
-        window.oRequestAnimationFrame      ||
-        window.msRequestAnimationFrame     ||
-        function(callback, element) {
-            return window.setTimeout(callback, 1000/60);
-        };
-
-})();

@@ -1,34 +1,15 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>3D in WebGL!</title>
-    <meta charset="utf-8" />
+    <meta charset="utf-8">
+    <title>WebGL</title>
+    <link rel="stylesheet" href="../webgl.css" type="text/css">
 </head>
 <body>
-<h1>Глава7. Индивидуальное задание 7 - Инициалы ФИО - ОДД из текстур</h1>
-<canvas id="canvas3D" width="400" height="300">Ваш браузер не поддерживает элемент canvas</canvas>
-<script  type="text/javascript" src="../js/gl-matrix-min.js"></script>
-
-<script id="shader-fs" type="x-shader/x-fragment">
-precision highp float;
-uniform sampler2D uSampler;
-varying vec2 vTextureCoords;
-
-  void main(void) {
-    gl_FragColor = texture2D(uSampler, vTextureCoords);
-  }
-</script>
-
-<script id="shader-vs" type="x-shader/x-vertex">
-attribute vec3 aVertexPosition;
-attribute vec2 aVertexTextureCoords;
-varying vec2 vTextureCoords;
-uniform mat4 uMVMatrix;
-  uniform mat4 uPMatrix;
-  void main(void) {
-    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-    vTextureCoords = aVertexTextureCoords;
-  }
-</script>
-<script src="../js/C7_Individual_task_7.js"></script>
+<h1>Глава7. Индивидуальное задание 7 - Вращающийся текстурированный куб</h1>
+<canvas id="glcanvas" width="640" height="480"></canvas>
 </body>
+
+<script src="../js/gl-matrix.js"></script>
+<script src="../js/C7_Individual_task_7.js"></script>
 </html>
