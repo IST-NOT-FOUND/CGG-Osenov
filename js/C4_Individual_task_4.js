@@ -2,6 +2,7 @@ var gl;
 var shaderProgram;
 var vertexBuffer; // буфер вершин
 var colorBuffer; //буфер цветов
+var ang = 0;
 // установка шейдеров
 function initShaders() {
     var fragmentShader = getShader(gl.FRAGMENT_SHADER, 'shader-fs');
@@ -73,13 +74,14 @@ function initBuffers() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(сolors), gl.STATIC_DRAW);
 }
 
-function initBuffers1() {
+function initBuffers1(angle) {
 
     var vertices = [
         0,  0.5,  0.0,
         -0.5, -0.5,  0.0,
         0.5, -0.5,  0.0
     ];
+    rotateZ(vertices, angle);
     // установка буфера вершин
     vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -97,17 +99,6 @@ function initBuffers1() {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(сolors), gl.STATIC_DRAW);
 }
 // отрисовка
-zRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-        c, s, 0, 0,
-        -s, c, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1,
-    ];
-}
 function draw() {
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -127,6 +118,8 @@ function draw() {
 
 function draw1() {
 
+    //rotateZ(vertices, 45);
+
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -138,6 +131,28 @@ function draw1() {
         vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
     gl.drawArrays(gl.TRIANGLES, 0, vertexBuffer.numberOfItems);
+}
+
+function rotateZ(m, angle) {
+    var c0 = Math.cos(angle);
+    var s0 = Math.sin(angle);
+    var c1 = Math.cos(angle + 2*Math.PI/3);
+    var s1 = Math.sin(angle + 2*Math.PI/3);
+    var c2 = Math.cos(angle - 2*Math.PI/3);
+    var s2 = Math.sin(angle - 2*Math.PI/3);
+
+    m[0] = c0*0.5; m[1] = s0*0.5;
+    m[3] = c1*0.5; m[4] = s1*0.5;
+    m[6] = c2*0.5; m[7] = s2*0.5;
+}
+
+function rotate() {
+    initBuffers();
+    draw();
+    initBuffers1(ang);
+    draw1();
+    ang += 0.01;
+    if (ang > 2*Math.PI/3) ang = 0;
 }
 
 window.onload=function(){
@@ -157,12 +172,6 @@ window.onload=function(){
 
         initShaders();
 
-        initBuffers();
-
-        draw();
-
-        initBuffers1();
-
-        draw1();
+        setInterval(rotate, 1000/60);
     }
 }
